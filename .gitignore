@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 가상환경
+.venv/
+venv/
+ENV/
+
+# Poetry
+poetry.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 환경변수
+.env
+.env.local
+
+# macOS
+.DS_Store
