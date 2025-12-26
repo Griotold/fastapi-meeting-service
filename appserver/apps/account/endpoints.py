@@ -15,3 +15,12 @@ async def user_detail(username: str, session: DbSessionDep) -> User:
         return user
     
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+
+@router.post("/signup")
+async def signup(payload: dict, session: DbSessionDep) -> User:
+    user = User.model_validate(payload)
+    session.add(user)
+    await session.commit()
+    await session.refresh(user) # id, created_at, updated_at 가져오기
+    return user
