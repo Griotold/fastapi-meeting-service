@@ -5,6 +5,7 @@ from appserver.db import DbSessionDep
 from sqlalchemy.exc import IntegrityError
 from .exceptions import DuplicatedUsernameError, DuplicatedEmailError
 from .schemas import SignupPayload, UserOut
+from .utils import hash_password
 
 router = APIRouter(prefix="/account")
 
@@ -28,8 +29,12 @@ async def signup(payload: SignupPayload, session: DbSessionDep) -> User:
 
     if count > 0:
         raise DuplicatedUsernameError()
+    
+    # SignupPayload → User 변환 시 password를 hashed_password로 변환
+    user_data = payload.model_dump(exclude={"password", "password_again"})
+    user_data["hashed_password"] = hash_password(payload.password)
 
-    user = User.model_validate(payload, from_attributes=True)
+    user = User.model_validate(user_data)
     session.add(user)
     try:
         await session.commit()

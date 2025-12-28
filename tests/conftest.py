@@ -12,7 +12,7 @@ from appserver.db import create_engine, create_session, use_session
 from appserver.app import include_routers
 from appserver.apps.account import models as account_models
 from appserver.apps.calendar import models as calendar_models
-#from appserver.apps.account.utils import hash_password
+from appserver.apps.account.utils import hash_password
 #from appserver.apps.account.schemas import LoginPayload
 #from appserver.libs.datetime.datetime import utcnow
 
@@ -112,19 +112,19 @@ def client(fastapi_app: FastAPI):
 #         yield client
 
 
-# @pytest.fixture()
-# async def host_user(db_session: AsyncSession):
-#     user = account_models.User(
-#         username="puddingcamp",
-#         hashed_password=hash_password("testtest"),
-#         email="puddingcamp@example.com",
-#         display_name="푸딩캠프",
-#         is_host=True,
-#     )
-#     db_session.add(user)
-#     await db_session.commit()
-#     await db_session.flush()
-#     return user
+@pytest.fixture()
+async def host_user(db_session: AsyncSession):
+    user = account_models.User(
+        username="puddingcamp",
+        hashed_password=hash_password("testtest"),
+        email="puddingcamp@example.com",
+        display_name="푸딩캠프",
+        is_host=True,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.flush()
+    return user
 
 
 # @pytest.fixture()
