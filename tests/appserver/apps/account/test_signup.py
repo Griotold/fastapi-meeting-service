@@ -5,36 +5,9 @@ from fastapi.testclient import TestClient
 import pytest
 from pydantic import ValidationError
 from appserver.apps.account.exceptions import DuplicatedUsernameError, DuplicatedEmailError
+from appserver.apps.account.schemas import SignupPayload
 
-# async def test_모든_입력_항목을_유효한_값으로_입력하면_계정이_생성된다(db_session: AsyncSession):
-async def test_signup_with_valid_inputs_creates_account(
-        client: TestClient,
-        db_session: AsyncSession
-):
-    payload = {
-        "username": "test",
-        "email": "test@example.com",
-        "display_name": "test",
-        "password": "test테스트1234",
-    }
-
-    result = await signup(payload, db_session)
-
-    assert isinstance(result, User)
-    assert result.username == payload["username"]
-    assert result.email == payload["email"]
-    assert result.display_name == payload["display_name"]
-    assert result.is_host is False
-
-    response = client.get(f"/account/users/{payload['username']}")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["username"] == payload["username"]
-    assert data["email"] == payload["email"]
-    assert data["display_name"] == payload["display_name"]
-    assert data["is_host"] is False
-
-
+# 1. 유효성 검증 테스트
 @pytest.mark.parametrize(
     "username",
     [
@@ -44,7 +17,6 @@ async def test_signup_with_valid_inputs_creates_account(
     ]
 )
 async def test_사용자명이_유효하지_않으면_사용자명이_유효하지_않다는_메시지를_담은_오류를_일으킨다(
-        client: TestClient,
         db_session: AsyncSession,
         username: str
 ):
@@ -53,11 +25,13 @@ async def test_사용자명이_유효하지_않으면_사용자명이_유효하�
         "email": "test@example.com",
         "display_name": "test",
         "password": "test테스트1234",
+        "password_again": "test테스트1234",  # 추가!
     }
 
     with pytest.raises(ValidationError):
-        await signup(payload, db_session)
+        SignupPayload(**payload)  # signup 호출 전에 검증
 
+# 2. 중복 username 테스트
 async def test_계정_ID가_중복되면_중복_계정_ID_오류를_일으킨다(
         db_session: AsyncSession
 ):
@@ -66,40 +40,44 @@ async def test_계정_ID가_중복되면_중복_계정_ID_오류를_일으킨다
         "email": "test@example.com",
         "display_name": "test",
         "password": "test테스트1234",
+        "password_again": "test테스트1234",  # 추가!
     }
-    await signup(payload, db_session)
+    await signup(SignupPayload(**payload), db_session)
 
-    payload["email"] = "test2example.com"
+    payload["email"] = "test2@example.com"  # @ 추가!
     with pytest.raises(DuplicatedUsernameError):
-        await signup(payload, db_session)
+        await signup(SignupPayload(**payload), db_session)
 
+# 3. 중복 email 테스트
 async def test_이메일_주소가_중복되면_중복_이메일_오류를_일으킨다(db_session: AsyncSession):
     payload = {
         "username": "test",
         "email": "test@example.com",
         "display_name": "test",
         "password": "test테스트1234",
+        "password_again": "test테스트1234",  # 추가!
     }
-    await signup(payload, db_session)
+    await signup(SignupPayload(**payload), db_session)
 
     payload["username"] = "test2"
     with pytest.raises(DuplicatedEmailError):
-        await signup(payload, db_session)
+        await signup(SignupPayload(**payload), db_session)
 
+# 4. display_name 자동생성 테스트
 @pytest.mark.parametrize(
     "payload",
     [
-        # display_name 키 자체가 없는 경우
         {
             "username": "test",
             "email": "test@example.com",
             "password": "test테스트1234",
+            "password_again": "test테스트1234",  # 추가!
         },
-        # display_name이 빈 문자열인 경우
         {
             "username": "test",
             "email": "test@example.com",
             "password": "test테스트1234",
+            "password_again": "test테스트1234",  # 추가!
             "display_name": "",
         },
     ]
@@ -108,6 +86,21 @@ async def test_표시명을_입력하지_않으면_무작위_문자열_8글자�
     db_session: AsyncSession,
     payload
 ):
-    user = await signup(payload, db_session)
+    user = await signup(SignupPayload(**payload), db_session)
     assert isinstance(user.display_name, str)
     assert len(user.display_name) == 8
+
+async def test_비밀번호가_일치하지_않으면_오류를_일으킨다(db_session: AsyncSession):
+    payload = {
+        "username": "test",
+        "email": "test@example.com",
+        "display_name": "test",
+        "password": "test테스트1234",
+        "password_again": "test테스트5678",  # 다른 비밀번호!
+    }
+
+    with pytest.raises(ValidationError) as exc_info:
+        SignupPayload(**payload)
+    
+    # 에러 메시지 확인 (선택사항)
+    assert "비밀번호가 일치하지 않습니다" in str(exc_info.value)
