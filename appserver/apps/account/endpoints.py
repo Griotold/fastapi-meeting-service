@@ -2,7 +2,8 @@ from fastapi import APIRouter, HTTPException, status
 from sqlmodel import select, func, update, delete, true
 from .models import User
 from appserver.db import DbSessionDep
-from .exceptions import DuplicatedUsernameError
+from sqlalchemy.exc import IntegrityError
+from .exceptions import DuplicatedUsernameError, DuplicatedEmailError
 
 router = APIRouter(prefix="/account")
 
@@ -29,6 +30,9 @@ async def signup(payload: dict, session: DbSessionDep) -> User:
 
     user = User.model_validate(payload)
     session.add(user)
-    await session.commit()
-    await session.refresh(user) # id, created_at, updated_at 가져오기
+    try:
+        await session.commit()
+    except IntegrityError:
+        raise DuplicatedEmailError()
+    await session.refresh(user)
     return user

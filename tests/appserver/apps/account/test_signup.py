@@ -73,3 +73,15 @@ async def test_계정_ID가_중복되면_중복_계정_ID_오류를_일으킨다
     with pytest.raises(DuplicatedUsernameError):
         await signup(payload, db_session)
 
+async def test_이메일_주소가_중복되면_중복_이메일_오류를_일으킨다(db_session: AsyncSession):
+    payload = {
+        "username": "test",
+        "email": "test@example.com",
+        "display_name": "test",
+        "password": "test테스트1234",
+    }
+    await signup(payload, db_session)
+
+    payload["username"] = "test2"
+    with pytest.raises(DuplicatedEmailError):
+        await signup(payload, db_session)
