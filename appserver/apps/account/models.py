@@ -1,8 +1,11 @@
+import random
+import string
+
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from sqlmodel import SQLModel, Field, Relationship, func
-from pydantic import AwareDatetime, EmailStr
+from pydantic import AwareDatetime, EmailStr, model_validator
 from sqlalchemy import UniqueConstraint
 from sqlalchemy_utc import UtcDateTime
 
@@ -49,6 +52,13 @@ class User(SQLModel, table=True):
             "onupdate": lambda: datetime.now(timezone.utc),
         },
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def generate_display_name(cls, data: dict):
+        if not data.get("display_name"):
+            data["display_name"] = "".join(random.choices(string.ascii_letters + string.digits, k=8))
+        return data
 
 class OAuthAccount(SQLModel, table=True):
     __tablename__ = "oauth_accounts"
