@@ -1,5 +1,5 @@
 import pytest
-from appserver.libs.datetime.calendar import get_start_weekday_of_month, get_last_day_of_month, get_range_days_of_month
+from appserver.libs.date_utils.calendar import get_start_weekday_of_month, get_last_day_of_month, get_range_days_of_month
 
 @pytest.mark.parametrize("year, month, expected", [
     (2024, 12, 6),

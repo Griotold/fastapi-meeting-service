@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlmodel import select, func, update, delete, true
 from .models import User
 from appserver.db import DbSessionDep
+from .exceptions import DuplicatedUsernameError
 
 router = APIRouter(prefix="/account")
 
@@ -19,6 +20,13 @@ async def user_detail(username: str, session: DbSessionDep) -> User:
 
 @router.post("/signup")
 async def signup(payload: dict, session: DbSessionDep) -> User:
+    stmt = select(func.count()).select_from(User).where(User.username == payload["username"])
+    result = await session.execute(stmt)
+    count = result.scalar_one()
+
+    if count > 0:
+        raise DuplicatedUsernameError()
+
     user = User.model_validate(payload)
     session.add(user)
     await session.commit()
