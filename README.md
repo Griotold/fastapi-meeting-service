@@ -31,6 +31,39 @@ fastapi dev appserver/app.py
 deactivate
 ```
 
+## 테스트
+
+### 전체 테스트 실행
+```bash
+poetry run pytest
+```
+
+### 상세 출력으로 테스트 실행
+```bash
+poetry run pytest -v
+```
+
+### 특정 파일만 테스트
+```bash
+poetry run pytest tests/appserver/apps/account/test_login_api.py
+```
+
+### 특정 테스트 함수만 실행
+```bash
+poetry run pytest tests/appserver/apps/account/test_login_api.py::test_로그인_성공
+```
+
+### 테스트 커버리지 확인 (선택사항)
+```bash
+poetry run pytest --cov=appserver --cov-report=html
+```
+
+### 테스트 옵션 설명
+- `-v`: 상세 출력
+- `-s`: print 출력 표시
+- `-x`: 첫 실패 시 중단
+- `-k EXPRESSION`: 특정 패턴의 테스트만 실행 (예: `-k login`)
+
 ## 데이터베이스 마이그레이션 (Alembic)
 
 ### 마이그레이션 생성
@@ -72,8 +105,26 @@ alembic revision --autogenerate -m "Initial migration"
 alembic upgrade head
 ```
 
+## 개발 워크플로우 (TDD)
+
+1. **테스트 작성** (Red)
+   - 실패하는 테스트 먼저 작성
+
+2. **최소 구현** (Green)
+   - 테스트를 통과하는 최소한의 코드 작성
+
+3. **리팩토링** (Refactor)
+   - 코드 개선 및 최적화
+
+4. **테스트 실행**
+```bash
+   poetry run pytest
+```
+
 ## 참고사항
 - 가상환경은 `.venv` 디렉토리에 위치
 - Poetry로 패키지 관리
 - 가상환경 활성화 시 프롬프트 앞에 `(.venv)` 표시됨
 - 개발 DB: SQLite (`local.db`)
+- 테스트 설정: `pyproject.toml`의 `[tool.pytest.ini_options]` 참고
+- 테스트 경로: `./tests`, `./appserver`

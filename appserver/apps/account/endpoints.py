@@ -3,9 +3,9 @@ from sqlmodel import select, func, update, delete, true
 from .models import User
 from appserver.db import DbSessionDep
 from sqlalchemy.exc import IntegrityError
-from .exceptions import DuplicatedUsernameError, DuplicatedEmailError
-from .schemas import SignupPayload, UserOut
-from .utils import hash_password
+from .exceptions import DuplicatedUsernameError, DuplicatedEmailError, PasswordMismatchError, UserNotFoundError
+from .schemas import SignupPayload, UserOut, LoginPayload
+from .utils import hash_password, verify_password
 
 router = APIRouter(prefix="/account")
 
@@ -42,3 +42,19 @@ async def signup(payload: SignupPayload, session: DbSessionDep) -> User:
         raise DuplicatedEmailError()
     await session.refresh(user)
     return user
+
+@router.post("/login", status_code=status.HTTP_200_OK, response_model=UserOut)
+async def login(payload: LoginPayload, session: DbSessionDep) -> User:
+    stmt = select(User).where(User.username == payload.username)
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        raise UserNotFoundError()
+    
+    is_valid = verify_password(payload.password, user.hashed_password)
+    if not is_valid:
+        raise PasswordMismatchError()
+    
+    return user
+    
