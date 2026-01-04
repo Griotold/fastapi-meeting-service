@@ -1,11 +1,17 @@
+from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlmodel import select, func, update, delete, true
 from .models import User
 from appserver.db import DbSessionDep
 from sqlalchemy.exc import IntegrityError
 from .exceptions import DuplicatedUsernameError, DuplicatedEmailError, PasswordMismatchError, UserNotFoundError
 from .schemas import SignupPayload, UserOut, LoginPayload
-from .utils import hash_password, verify_password
+from .utils import (
+    hash_password, 
+    verify_password,
+    create_access_token,
+    ACCESS_TOKEN_EXPIRE_MINUTES)
 
 router = APIRouter(prefix="/account")
 
@@ -43,8 +49,8 @@ async def signup(payload: SignupPayload, session: DbSessionDep) -> User:
     await session.refresh(user)
     return user
 
-@router.post("/login", status_code=status.HTTP_200_OK, response_model=UserOut)
-async def login(payload: LoginPayload, session: DbSessionDep) -> User:
+@router.post("/login", status_code=status.HTTP_200_OK)
+async def login(payload: LoginPayload, session: DbSessionDep) -> JSONResponse:
     stmt = select(User).where(User.username == payload.username)
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
@@ -56,5 +62,34 @@ async def login(payload: LoginPayload, session: DbSessionDep) -> User:
     if not is_valid:
         raise PasswordMismatchError()
     
-    return user
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={
+            "sub": user.username,
+            "display_name": user.display_name,
+            "is_host": user.is_host
+        }, 
+        expires_delta=access_token_expires
+    )
+
+    response_data = {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": user.model_dump(mode="json", exclude={"hashed_password", "email"})
+    }
+
+    # 앱에서는 쿠키 설정 끄기!
+    # return JSONResponse(response_data)
+    now = datetime.now(timezone.utc)
+
+    res = JSONResponse(response_data, status_code=status.HTTP_200_OK)
+    res.set_cookie(
+        key="auth_token",
+        value=access_token,
+        expires=now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+        httponly=True,
+        secure=True,
+        samesite="strict"
+    )
     
+    return res

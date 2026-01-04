@@ -121,6 +121,13 @@ alembic upgrade head
    poetry run pytest
 ```
 
+## ⚠️ 모바일 앱 배포 시 주의사항
+
+현재 프로젝트는 웹 브라우저 기반으로 구현되어 있습니다.  
+모바일 앱으로 배포 시 JWT 쿠키 설정 제거 등의 수정이 필요합니다.
+
+**자세한 내용:** [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) 참고
+
 ## 참고사항
 - 가상환경은 `.venv` 디렉토리에 위치
 - Poetry로 패키지 관리
