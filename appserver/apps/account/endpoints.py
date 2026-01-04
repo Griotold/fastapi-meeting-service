@@ -6,12 +6,16 @@ from .models import User
 from appserver.db import DbSessionDep
 from sqlalchemy.exc import IntegrityError
 from .exceptions import DuplicatedUsernameError, DuplicatedEmailError, PasswordMismatchError, UserNotFoundError
-from .schemas import SignupPayload, UserOut, LoginPayload
+from .schemas import SignupPayload, UserOut, LoginPayload, UserDetailOut
 from .utils import (
     hash_password, 
     verify_password,
     create_access_token,
     ACCESS_TOKEN_EXPIRE_MINUTES)
+from .constants import AUTH_TOKEN_COOKIE_NAME
+from .deps import CurrentUserDep
+
+
 
 router = APIRouter(prefix="/account")
 
@@ -84,7 +88,7 @@ async def login(payload: LoginPayload, session: DbSessionDep) -> JSONResponse:
 
     res = JSONResponse(response_data, status_code=status.HTTP_200_OK)
     res.set_cookie(
-        key="auth_token",
+        key=AUTH_TOKEN_COOKIE_NAME,
         value=access_token,
         expires=now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
         httponly=True,
@@ -93,3 +97,8 @@ async def login(payload: LoginPayload, session: DbSessionDep) -> JSONResponse:
     )
     
     return res
+
+
+@router.get("/@me", response_model=UserDetailOut)
+async def me(user: CurrentUserDep) -> User:
+    return user
