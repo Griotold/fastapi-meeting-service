@@ -109,7 +109,7 @@ async def update_user(
     payload: UpdateUserPayload,
     session: DbSessionDep
 ) -> User:
-    updated_data = payload.model_dump(exclude_none=True)
+    updated_data = payload.model_dump(exclude_none=True, exclude={"password", "password_again"})
 
     stmt = update(User).where(User.username == user.username).values(**updated_data)
     await session.execute(stmt)
