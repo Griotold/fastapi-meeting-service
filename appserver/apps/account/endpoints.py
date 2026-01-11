@@ -121,4 +121,11 @@ async def logout(user: CurrentUserDep) -> JSONResponse:
     res = JSONResponse({})
     res.delete_cookie(AUTH_TOKEN_COOKIE_NAME)
     return res
-    
+
+
+@router.delete("/unregister", status_code=status.HTTP_204_NO_CONTENT)
+async def unregister(user: CurrentUserDep, session: DbSessionDep) -> None:
+    stmt = delete(User).where(User.username == user.username)
+    await session.execute(stmt)
+    await session.commit()
+    return None
