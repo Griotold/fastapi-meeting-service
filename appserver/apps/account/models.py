@@ -2,7 +2,7 @@ import random
 import string
 
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 from sqlmodel import SQLModel, Field, Relationship, func
 from pydantic import AwareDatetime, EmailStr, model_validator
@@ -29,9 +29,9 @@ class User(SQLModel, table=True):
             back_populates="user",
             sa_relationship_kwargs={"lazy": "noload"},
     )
-    calendar: "Calendar" = Relationship(
+    calendar: Union["Calendar", None] = Relationship(
         back_populates="host",
-        sa_relationship_kwargs={"uselist": False, "single_parent": True}
+        sa_relationship_kwargs={"uselist": False, "single_parent": True, "lazy": "joined"}
     )
     bookings: list["Booking"] = Relationship(back_populates="guest")
 

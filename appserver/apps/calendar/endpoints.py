@@ -6,7 +6,7 @@ from appserver.apps.calendar.models import Calendar
 from appserver.db import DbSessionDep
 from appserver.apps.account.deps import CurrentUserOptionalDep, CurrentUserDep
 from .exceptions import CalendarNotFoundError, HostNotFoundError, CalendarAlreadyExistsError, GuestPermissionError
-from .schemas import CalendarDetailOut, CalendarOut, CalendarCreateIn
+from .schemas import CalendarDetailOut, CalendarOut, CalendarCreateIn, CalendarUpdateIn
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
 
@@ -61,3 +61,38 @@ async def create_calendar(
     except IntegrityError as exc:
         raise CalendarAlreadyExistsError() from exc
     return calendar
+
+@router.patch(
+    "",
+    status_code=status.HTTP_200_OK,
+    response_model=CalendarDetailOut,
+)
+async def update_calendar(
+    user: CurrentUserDep,
+    session: DbSessionDep,
+    payload: CalendarUpdateIn,
+) -> CalendarDetailOut:
+    # 호스트가 아니면 캘린더를 수정할 수 없다.
+    if not user.is_host:
+        raise GuestPermissionError()
+    
+    # 사용자에게 캘린더가 없으면 HTTP 404 응답을 한다.
+    if user.calendar is None:
+        raise CalendarNotFoundError()
+    
+    # topics 값이 있으면 변경하고
+    if payload.topics is not None:
+        user.calendar.topics = payload.topics
+
+    # description 값이 있으면 변경하고
+    if payload.description is not None:
+        user.calendar.description = payload.description
+
+    # google_calendar_id 값이 있으면 변경하고
+    if payload.google_calendar_id is not None:
+        user.calendar.google_calendar_id = payload.google_calendar_id
+
+    # 데이터베이스에 반영한다.
+    await session.commit()
+
+    return user.calendar
