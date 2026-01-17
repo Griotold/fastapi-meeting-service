@@ -98,7 +98,7 @@ async def update_calendar(
     return user.calendar
 
 @router.post(
-    "/time_slots",
+    "/time-slots",
     status_code=status.HTTP_201_CREATED,
     response_model=TimeSlotOut,
 )
