@@ -5,12 +5,12 @@ from appserver.apps.account.models import User
 from appserver.apps.calendar.models import Calendar
 from appserver.db import DbSessionDep
 from appserver.apps.account.deps import CurrentUserOptionalDep, CurrentUserDep
-from .exceptions import CalendarNotFoundError, HostNotFoundError, CalendarAlreadyExistsError
+from .exceptions import CalendarNotFoundError, HostNotFoundError, CalendarAlreadyExistsError, GuestPermissionError
 from .schemas import CalendarDetailOut, CalendarOut, CalendarCreateIn
 
-router = APIRouter()
+router = APIRouter(prefix="/calendar", tags=["calendar"])
 
-@router.get("/calendar/{host_username}", status_code=status.HTTP_200_OK)
+@router.get("/{host_username}", status_code=status.HTTP_200_OK)
 async def host_calendar_detail(
         host_username: str, 
         user: CurrentUserOptionalDep,
@@ -37,7 +37,7 @@ async def host_calendar_detail(
     return CalendarOut.model_validate(calendar) # 타인 -> 일반 정보
 
 @router.post(
-    "/calendar", 
+    "", 
     status_code=status.HTTP_201_CREATED,
     response_model=CalendarDetailOut,
 )
@@ -46,6 +46,9 @@ async def create_calendar(
     session: DbSessionDep,
     payload: CalendarCreateIn,
 ) -> CalendarDetailOut:
+    if not user.is_host:
+        raise GuestPermissionError()
+
     calendar = Calendar(
         host_id=user.id,
         topics=payload.topics,

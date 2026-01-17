@@ -90,4 +90,15 @@ async def test_캘린더가_있는_상황에서_추가_생성하려_하면_422_�
     response = client_with_auth.post("/calendar", json=payload)
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
+async def test_게스트_사용자가_캘린더를_생성하려_하면_422_응답을_반환한다(
+        client_with_guest_auth: TestClient,
+) -> None:
+    google_calendar_id = "valid_google_calendar_id@group.calendar.google.com"
 
+    payload = {
+        "topics": ["topic2", "topic1", "topic2"],
+        "description": "description",
+        "google_calendar_id": google_calendar_id
+    }
+    response = client_with_guest_auth.post("/calendar", json=payload)
+    assert response.status_code == status.HTTP_403_FORBIDDEN
