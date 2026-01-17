@@ -2,15 +2,15 @@ from fastapi import APIRouter, status
 from sqlmodel import select
 from sqlalchemy.exc import IntegrityError
 from appserver.apps.account.models import User
-from appserver.apps.calendar.models import Calendar
+from appserver.apps.calendar.models import Calendar, TimeSlot
 from appserver.db import DbSessionDep
 from appserver.apps.account.deps import CurrentUserOptionalDep, CurrentUserDep
 from .exceptions import CalendarNotFoundError, HostNotFoundError, CalendarAlreadyExistsError, GuestPermissionError
-from .schemas import CalendarDetailOut, CalendarOut, CalendarCreateIn, CalendarUpdateIn
+from .schemas import CalendarDetailOut, CalendarOut, CalendarCreateIn, CalendarUpdateIn, TimeSlotCreateIn, TimeSlotOut
 
-router = APIRouter(prefix="/calendar", tags=["calendar"])
+router = APIRouter(tags=["calendar"])
 
-@router.get("/{host_username}", status_code=status.HTTP_200_OK)
+@router.get("/calendar/{host_username}", status_code=status.HTTP_200_OK)
 async def host_calendar_detail(
         host_username: str, 
         user: CurrentUserOptionalDep,
@@ -37,7 +37,7 @@ async def host_calendar_detail(
     return CalendarOut.model_validate(calendar) # 타인 -> 일반 정보
 
 @router.post(
-    "", 
+    "/calendar", 
     status_code=status.HTTP_201_CREATED,
     response_model=CalendarDetailOut,
 )
@@ -63,7 +63,7 @@ async def create_calendar(
     return calendar
 
 @router.patch(
-    "",
+    "/calendar",
     status_code=status.HTTP_200_OK,
     response_model=CalendarDetailOut,
 )
@@ -96,3 +96,26 @@ async def update_calendar(
     await session.commit()
 
     return user.calendar
+
+@router.post(
+    "/time_slots",
+    status_code=status.HTTP_201_CREATED,
+    response_model=TimeSlotOut,
+)
+async def create_time_slot(
+    user: CurrentUserDep,
+    session: DbSessionDep,
+    payload: TimeSlotCreateIn,
+) -> TimeSlotOut:
+    if not user.is_host:
+        raise GuestPermissionError()
+    
+    time_slot = TimeSlot(
+        calendar_id = user.calendar.id,
+        start_time=payload.start_time,
+        end_time=payload.end_time,
+        weekdays=payload.weekdays,
+    )
+    session.add(time_slot)
+    await session.commit()
+    return time_slot
