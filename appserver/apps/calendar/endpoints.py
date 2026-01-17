@@ -1,11 +1,11 @@
 from fastapi import APIRouter, status
-from sqlmodel import select
+from sqlmodel import select, and_
 from sqlalchemy.exc import IntegrityError
 from appserver.apps.account.models import User
 from appserver.apps.calendar.models import Calendar, TimeSlot
 from appserver.db import DbSessionDep
 from appserver.apps.account.deps import CurrentUserOptionalDep, CurrentUserDep
-from .exceptions import CalendarNotFoundError, HostNotFoundError, CalendarAlreadyExistsError, GuestPermissionError
+from .exceptions import CalendarNotFoundError, HostNotFoundError, CalendarAlreadyExistsError, GuestPermissionError, TimeSlotOverlapError
 from .schemas import CalendarDetailOut, CalendarOut, CalendarCreateIn, CalendarUpdateIn, TimeSlotCreateIn, TimeSlotOut
 
 router = APIRouter(tags=["calendar"])
@@ -109,6 +109,22 @@ async def create_time_slot(
 ) -> TimeSlotOut:
     if not user.is_host:
         raise GuestPermissionError()
+    
+    # 이미 존재하는 타임슬롯과 겹치는지 확인
+    stmt = select(TimeSlot).where(
+        and_(
+            TimeSlot.calendar_id == user.calendar.id,
+            TimeSlot.start_time < payload.end_time,
+            TimeSlot.end_time > payload.start_time,
+        )
+    )
+
+    result = await session.execute(stmt)
+    existing_time_slots = result.scalars().all()
+
+    for existing_time_slot in existing_time_slots:
+        if any(day in existing_time_slot.weekdays for day in payload.weekdays):
+            raise TimeSlotOverlapError()
     
     time_slot = TimeSlot(
         calendar_id = user.calendar.id,
