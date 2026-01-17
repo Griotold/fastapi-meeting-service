@@ -4,7 +4,7 @@ from appserver.apps.account.models import User
 from appserver.apps.calendar.models import Calendar
 from appserver.apps.calendar.schemas import CalendarDetailOut, CalendarOut
 from appserver.apps.calendar.endpoints import host_calendar_detail
-from appserver.apps.calendar.exceptions import HostNotFoundError
+from appserver.apps.calendar.exceptions import CalendarNotFoundError, HostNotFoundError
 
 
 @pytest.mark.parametrize("user_key, expected_type", [
@@ -42,3 +42,10 @@ async def test_존재하지_않는_사용자의_username_으로_캘린더_정보
 ) -> None:
     with pytest.raises(HostNotFoundError):
         await host_calendar_detail("not_exist_user", None, db_session)
+
+async def test_호스트가_아닌_사용자의_username_으로_캘린더_정보를_가져오려_하면_404_응답을_반환한다(
+        guest_user: User,
+        db_session: AsyncSession,
+) -> None:
+    with pytest.raises(CalendarNotFoundError):
+        await host_calendar_detail(guest_user.username, guest_user, db_session)
