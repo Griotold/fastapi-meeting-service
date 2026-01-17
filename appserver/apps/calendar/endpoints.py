@@ -1,11 +1,12 @@
 from fastapi import APIRouter, status
 from sqlmodel import select
+from sqlalchemy.exc import IntegrityError
 from appserver.apps.account.models import User
 from appserver.apps.calendar.models import Calendar
 from appserver.db import DbSessionDep
-from appserver.apps.account.deps import CurrentUserOptionalDep
-from .exceptions import CalendarNotFoundError, HostNotFoundError
-from .schemas import CalendarDetailOut, CalendarOut
+from appserver.apps.account.deps import CurrentUserOptionalDep, CurrentUserDep
+from .exceptions import CalendarNotFoundError, HostNotFoundError, CalendarAlreadyExistsError
+from .schemas import CalendarDetailOut, CalendarOut, CalendarCreateIn
 
 router = APIRouter()
 
@@ -34,3 +35,26 @@ async def host_calendar_detail(
         return CalendarDetailOut.model_validate(calendar) # 본인 -> 상세 정보
         
     return CalendarOut.model_validate(calendar) # 타인 -> 일반 정보
+
+@router.post(
+    "/calendar", 
+    status_code=status.HTTP_201_CREATED,
+    response_model=CalendarDetailOut,
+)
+async def create_calendar(
+    user: CurrentUserDep,
+    session: DbSessionDep,
+    payload: CalendarCreateIn,
+) -> CalendarDetailOut:
+    calendar = Calendar(
+        host_id=user.id,
+        topics=payload.topics,
+        description=payload.description,
+        google_calendar_id=payload.google_calendar_id,
+        )
+    session.add(calendar)
+    try:
+        await session.commit()
+    except IntegrityError as exc:
+        raise CalendarAlreadyExistsError() from exc
+    return calendar
