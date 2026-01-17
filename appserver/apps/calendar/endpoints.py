@@ -16,11 +16,15 @@ async def host_calendar_detail(
     stmt = select(User).where(User.username == host_username)
     result = await session.execute(stmt)
     host = result.scalar_one_or_none()
+    if host is None:
+        raise HostNotFoundError()
         
     # 해당 호스트의 캘린더 찾기
     stmt = select(Calendar).where(Calendar.host_id == host.id)
     result = await session.execute(stmt)
     calendar = result.scalar_one_or_none()
+    if calendar is None:
+        raise CalendarNotFoundError()
 
     # 권한에 따른 분기 처리
     if user is not None and user.id == host.id:
