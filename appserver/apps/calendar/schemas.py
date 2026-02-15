@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import time, date
 from typing import Annotated
 from pydantic import AwareDatetime, EmailStr, AfterValidator, model_validator
 from sqlmodel import SQLModel, Field
@@ -41,6 +41,7 @@ class TimeSlotCreateIn(SQLModel):
     start_time: time
     end_time: time
     weekdays: Weekdays
+    
     @model_validator(mode="after")
     def validate_time_slot(self):
         if self.start_time >= self.end_time:
@@ -52,5 +53,20 @@ class TimeSlotOut(SQLModel):
     start_time: time
     end_time: time
     weekdays: list[int]
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
+
+class BookingCreateIn(SQLModel):
+    when: date
+    topic: str
+    description: str
+    time_slot_id: int
+
+class BookingOut(SQLModel):
+    id: int
+    when: date
+    topic: str
+    description: str
+    time_slot: TimeSlotOut
     created_at: AwareDatetime
     updated_at: AwareDatetime

@@ -5,8 +5,9 @@ from appserver.apps.account.models import User
 from appserver.apps.calendar.models import Calendar, TimeSlot
 from appserver.db import DbSessionDep
 from appserver.apps.account.deps import CurrentUserOptionalDep, CurrentUserDep
+from .models import Booking
 from .exceptions import CalendarNotFoundError, HostNotFoundError, CalendarAlreadyExistsError, GuestPermissionError, TimeSlotOverlapError
-from .schemas import CalendarDetailOut, CalendarOut, CalendarCreateIn, CalendarUpdateIn, TimeSlotCreateIn, TimeSlotOut
+from .schemas import CalendarDetailOut, CalendarOut, CalendarCreateIn, CalendarUpdateIn, TimeSlotCreateIn, TimeSlotOut, BookingCreateIn, BookingOut
 
 router = APIRouter(tags=["calendar"])
 
@@ -135,3 +136,26 @@ async def create_time_slot(
     session.add(time_slot)
     await session.commit()
     return time_slot
+
+@router.post(
+    "/bookings/{host_username}",
+    status_code=status.HTTP_201_CREATED,
+    response_model=BookingOut,
+)
+async def create_booking(
+    host_username: str,
+    user: CurrentUserDep,
+    session: DbSessionDep,
+    payload: BookingCreateIn
+) -> BookingOut:
+    booking = Booking(
+        guest_id=user.id,
+        when=payload.when,
+        topic=payload.topic,
+        description=payload.description,
+        time_slot_id=payload.time_slot_id,
+    )
+    session.add(booking)
+    await session.commit()
+    await session.refresh(booking)
+    return booking

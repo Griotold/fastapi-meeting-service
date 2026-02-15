@@ -217,20 +217,20 @@ async def host_user_calendar(db_session: AsyncSession, host_user: account_models
 #     return calendar
 
 
-# @pytest.fixture()
-# async def time_slot_tuesday(
-#     db_session: AsyncSession,
-#     host_user_calendar: calendar_models.Calendar,
-# ):
-#     time_slot = calendar_models.TimeSlot(
-#         start_time=time(9, 0),
-#         end_time=time(10, 0),
-#         weekdays=[calendar.TUESDAY],
-#         calendar_id=host_user_calendar.id,
-#     )
-#     db_session.add(time_slot)
-#     await db_session.commit()
-#     return time_slot
+@pytest.fixture()
+async def time_slot_tuesday(
+    db_session: AsyncSession,
+    host_user_calendar: calendar_models.Calendar,
+):
+    time_slot = calendar_models.TimeSlot(
+        start_time=time(9, 0),
+        end_time=time(10, 0),
+        weekdays=[calendar.TUESDAY],
+        calendar_id=host_user_calendar.id,
+    )
+    db_session.add(time_slot)
+    await db_session.commit()
+    return time_slot
 
 
 # @pytest.fixture()
