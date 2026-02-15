@@ -10,7 +10,7 @@ from appserver.apps.calendar.models import TimeSlot
 @pytest.mark.usefixtures("host_user_calendar")
 async def test_유효한_예약_신청_내용으로_예약_생성을_요청하면_예약_내용을_담아_HTTP_201_응답을_한다(
     host_user: User,
-    client_with_auth: TestClient,
+    client_with_guest_auth: TestClient,
     time_slot_tuesday: TimeSlot,
 ):
     target_date = date(2024, 12, 3)
@@ -21,7 +21,7 @@ async def test_유효한_예약_신청_내용으로_예약_생성을_요청하�
         "time_slot_id": time_slot_tuesday.id,
     }
 
-    response = client_with_auth.post(f"/bookings/{host_user.username}", json=payload)
+    response = client_with_guest_auth.post(f"/bookings/{host_user.username}", json=payload)
 
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
@@ -76,4 +76,22 @@ async def test_존재하지_않는_시간대에_예약을_생성하면_HTTP_404_
     response = client_with_guest_auth.post(f"/bookings/{host_user.username}", json=payload)
 
     assert response.status_code == status.HTTP_404_NOT_FOUND
+
+@pytest.mark.usefixtures("host_user_calendar")
+async def test_자기_자신에게_예약을_생성하면_HTTP_422_응답을_한다(
+        host_user: User,
+        client_with_auth: TestClient,
+        time_slot_tuesday: TimeSlot,
+):
+    target_date = date(2024, 12, 3)
+    payload = {
+        "when": target_date.isoformat(),
+        "topic": "test",
+        "description": "test",
+        "time_slot_id": time_slot_tuesday.id,
+    }
+
+    response = client_with_auth.post(f"/bookings/{host_user.username}", json=payload)
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
