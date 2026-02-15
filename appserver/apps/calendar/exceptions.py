@@ -58,3 +58,10 @@ class PastDateBookingError(HTTPException):
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="과거 일자에는 예약할 수 없습니다."
         )
+
+class DuplicateBookingError(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="이미 예약이 존재합니다."
+        )

@@ -132,3 +132,25 @@ async def test_과거_일자에_예약을_생성하면_HTTP_422_응답을_한다
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
+@pytest.mark.usefixtures("host_user_calendar")
+async def test_중복_예약을_생성하면_HTTP_422_응답을_한다(
+        host_user: User,
+        client_with_guest_auth: TestClient,
+        time_slot_tuesday: TimeSlot,
+):
+    target_date = get_next_weekday(1)  # 다음 화요일
+    payload = {
+        "when": target_date.isoformat(),
+        "topic": "test",
+        "description": "test",
+        "time_slot_id": time_slot_tuesday.id,
+    }
+
+    # 첫 번째 예약 생성 (성공)
+    first_response = client_with_guest_auth.post(f"/bookings/{host_user.username}", json=payload)
+    assert first_response.status_code == status.HTTP_201_CREATED
+
+    # 동일한 내용으로 두 번째 예약 시도 (실패 - 중복)
+    second_response = client_with_guest_auth.post(f"/bookings/{host_user.username}", json=payload)
+    assert second_response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
