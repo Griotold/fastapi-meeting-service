@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 import pytest
 
 from fastapi import status
@@ -7,13 +7,31 @@ from fastapi.testclient import TestClient
 from appserver.apps.account.models import User
 from appserver.apps.calendar.models import TimeSlot
 
+
+def get_next_weekday(weekday: int, weeks_ahead: int = 1) -> date:
+    """지정한 요일의 미래 날짜를 반환 (0=월요일, 1=화요일, ...)"""
+    today = date.today()
+    days_ahead = weekday - today.weekday()
+    if days_ahead <= 0:
+        days_ahead += 7
+    return today + timedelta(days=days_ahead + (weeks_ahead - 1) * 7)
+
+
+def get_past_weekday(weekday: int, weeks_ago: int = 1) -> date:
+    """지정한 요일의 과거 날짜를 반환 (0=월요일, 1=화요일, ...)"""
+    today = date.today()
+    days_ago = today.weekday() - weekday
+    if days_ago <= 0:
+        days_ago += 7
+    return today - timedelta(days=days_ago + (weeks_ago - 1) * 7)
+
 @pytest.mark.usefixtures("host_user_calendar")
 async def test_유효한_예약_신청_내용으로_예약_생성을_요청하면_예약_내용을_담아_HTTP_201_응답을_한다(
     host_user: User,
     client_with_guest_auth: TestClient,
     time_slot_tuesday: TimeSlot,
 ):
-    target_date = date(2024, 12, 3)
+    target_date = get_next_weekday(1)  # 다음 화요일
     payload = {
         "when": target_date.isoformat(),
         "topic": "test",
@@ -38,7 +56,7 @@ async def test_호스트가_아닌_사용자에게_예약을_생성하면_HTTP_4
         client_with_guest_auth: TestClient,
         time_slot_tuesday: TimeSlot,
 ):
-    target_date = date(2024, 12, 3)
+    target_date = get_next_weekday(1)  # 다음 화요일
     payload = {
         "when": target_date.isoformat(),
         "topic": "test",        
@@ -51,11 +69,11 @@ async def test_호스트가_아닌_사용자에게_예약을_생성하면_HTTP_4
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 @pytest.mark.parametrize(
-        "time_slot_id_add, target_date",
+        "time_slot_id_add, weekday",
         [
-            (100, date(2024, 12, 3)),
-            (0, date(2024, 12, 4)),
-            (0, date(2024, 12, 5)),
+            (100, 1),  # 존재하지 않는 time_slot_id, 화요일
+            (0, 2),    # 수요일 (화요일 아님)
+            (0, 3),    # 목요일 (화요일 아님)
         ],
 )
 @pytest.mark.usefixtures("host_user_calendar")
@@ -64,8 +82,9 @@ async def test_존재하지_않는_시간대에_예약을_생성하면_HTTP_404_
         client_with_guest_auth: TestClient,
         time_slot_tuesday: TimeSlot,
         time_slot_id_add: int,
-        target_date: date,
+        weekday: int,
 ):
+    target_date = get_next_weekday(weekday)
     payload = {
         "when": target_date.isoformat(),
         "topic": "test",
@@ -83,7 +102,7 @@ async def test_자기_자신에게_예약을_생성하면_HTTP_422_응답을_한
         client_with_auth: TestClient,
         time_slot_tuesday: TimeSlot,
 ):
-    target_date = date(2024, 12, 3)
+    target_date = get_next_weekday(1)  # 다음 화요일
     payload = {
         "when": target_date.isoformat(),
         "topic": "test",
@@ -92,6 +111,24 @@ async def test_자기_자신에게_예약을_생성하면_HTTP_422_응답을_한
     }
 
     response = client_with_auth.post(f"/bookings/{host_user.username}", json=payload)
+
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+@pytest.mark.usefixtures("host_user_calendar")
+async def test_과거_일자에_예약을_생성하면_HTTP_422_응답을_한다(
+        host_user: User,
+        client_with_guest_auth: TestClient,
+        time_slot_tuesday: TimeSlot,
+):
+    past_date = get_past_weekday(1)  # 지난 화요일
+    payload = {
+        "when": past_date.isoformat(),
+        "topic": "test",
+        "description": "test",
+        "time_slot_id": time_slot_tuesday.id,
+    }
+
+    response = client_with_guest_auth.post(f"/bookings/{host_user.username}", json=payload)
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
