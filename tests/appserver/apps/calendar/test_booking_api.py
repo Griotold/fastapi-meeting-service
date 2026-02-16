@@ -193,3 +193,19 @@ async def test_게스트는_호스트의_캘린더의_예약_내역을_월_단�
     assert not not data
     assert len(data) == len(booking_dates)
     assert all([item["when"] in booking_dates for item in data])
+
+async def test_게스트는_자신의_캘린더의_예약_내역을_페이지_단위로_받는다(
+        client_with_guest_auth: TestClient,
+        host_bookings: list[Booking],
+        charming_host_bookings: list[Booking]
+):
+    response = client_with_guest_auth.get("/guest-calendar/bookings", params={"page": 1, "page_size": 50})
+
+    assert response.status_code == status.HTTP_200_OK
+
+    id_set = frozenset([booking.id for booking in host_bookings] + [booking.id for 
+                        booking in charming_host_bookings])
+    
+    data = response.json()
+    assert len(data) == len(id_set)
+    assert all([item["id"] in id_set for item in data])
