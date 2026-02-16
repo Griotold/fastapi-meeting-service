@@ -1,7 +1,7 @@
 from datetime import date
 from fastapi import APIRouter, status, Query
 from typing import Annotated
-from sqlmodel import select, and_, func, true
+from sqlmodel import select, and_, func, true, extract
 from sqlalchemy.exc import IntegrityError
 from appserver.apps.account.models import User
 from appserver.apps.calendar.models import Calendar, TimeSlot
@@ -9,7 +9,7 @@ from appserver.db import DbSessionDep
 from appserver.apps.account.deps import CurrentUserOptionalDep, CurrentUserDep
 from .models import Booking
 from .exceptions import CalendarNotFoundError, HostNotFoundError, CalendarAlreadyExistsError, GuestPermissionError, TimeSlotOverlapError, TimeSlotNotFoundError, SelfBookingError, PastDateBookingError, DuplicateBookingError
-from .schemas import CalendarDetailOut, CalendarOut, CalendarCreateIn, CalendarUpdateIn, TimeSlotCreateIn, TimeSlotOut, BookingCreateIn, BookingOut
+from .schemas import CalendarDetailOut, CalendarOut, CalendarCreateIn, CalendarUpdateIn, TimeSlotCreateIn, TimeSlotOut, BookingCreateIn, BookingOut, SimpleBookingOut
 
 router = APIRouter(tags=["calendar"])
 
@@ -225,3 +225,30 @@ async def get_host_bookings_by_month(
     )
     result = await session.execute(stmt)
     return result.scalars().all()  
+
+@router.get(
+            "/calendar/{host_username}/bookings",
+            status_code=status.HTTP_200_OK,
+            response_model=list[SimpleBookingOut],
+        )
+async def host_calendar_bookings(
+    host_username: str,
+    session: DbSessionDep,
+    year: Annotated[int, Query(ge=2024, le=2025)],
+    month: Annotated[int, Query(ge=1, le=12)],
+) -> list[SimpleBookingOut]:
+    stmt = select(User).where(User.username == host_username)
+    result = await session.execute(stmt)
+    host = result.scalar_one_or_none()
+    if host is None or host.calendar is None:
+        raise HostNotFoundError()
+    
+    stmt = (
+        select(Booking)
+        .where(Booking.time_slot.has(TimeSlot.calendar_id == host.calendar.id))
+        .where(extract("year", Booking.when) == year)
+        .where(extract("month", Booking.when) == month)
+        .order_by(Booking.when.desc())           
+    )
+    result = await session.execute(stmt)
+    return result.scalars().all()
