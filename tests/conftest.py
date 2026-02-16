@@ -127,19 +127,19 @@ async def host_user(db_session: AsyncSession):
     return user
 
 
-# @pytest.fixture()
-# async def charming_host_user(db_session: AsyncSession):
-#     user = account_models.User(
-#         username="charming_host",
-#         hashed_password=hash_password("testtest"),
-#         email="charming_host@example.com",
-#         display_name="매력있는 캠프",
-#         is_host=True,
-#     )
-#     db_session.add(user)
-#     await db_session.commit()
-#     await db_session.flush()
-#     return user
+@pytest.fixture()
+async def charming_host_user(db_session: AsyncSession):
+    user = account_models.User(
+        username="charming_host",
+        hashed_password=hash_password("testtest"),
+        email="charming_host@example.com",
+        display_name="매력있는 캠프",
+        is_host=True,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.flush()
+    return user
 
 
 @pytest.fixture()
@@ -203,18 +203,18 @@ async def host_user_calendar(db_session: AsyncSession, host_user: account_models
     return calendar
 
 
-# @pytest.fixture()
-# async def charming_host_user_calendar(db_session: AsyncSession, charming_host_user: account_models.User):
-#     calendar = calendar_models.Calendar(
-#         host_id=charming_host_user.id,
-#         description="매력있는 캠프 캘린더 입니다.",
-#         topics=["매력있는 캠프", "매력있는 캠프2"],
-#         google_calendar_id="0987654321",
-#     )
-#     db_session.add(calendar)
-#     await db_session.commit()
-#     await db_session.refresh(charming_host_user)
-#     return calendar
+@pytest.fixture()
+async def charming_host_user_calendar(db_session: AsyncSession, charming_host_user: account_models.User):
+    calendar = calendar_models.Calendar(
+        host_id=charming_host_user.id,
+        description="매력있는 캠프 캘린더 입니다.",
+        topics=["매력있는 캠프", "매력있는 캠프2"],
+        google_calendar_id="0987654321",
+    )
+    db_session.add(calendar)
+    await db_session.commit()
+    await db_session.refresh(charming_host_user)
+    return calendar
 
 
 @pytest.fixture()
@@ -249,20 +249,20 @@ async def time_slot_tuesday(
 #     return time_slot
 
 
-# @pytest.fixture()
-# async def time_slot_wednesday_thursday(
-#     db_session: AsyncSession,
-#     charming_host_user_calendar: calendar_models.Calendar,
-# ):
-#     time_slot = calendar_models.TimeSlot(
-#         start_time=time(10, 0),
-#         end_time=time(11, 0),
-#         weekdays=[calendar.WEDNESDAY, calendar.THURSDAY],
-#         calendar_id=charming_host_user_calendar.id,
-#     )
-#     db_session.add(time_slot)
-#     await db_session.commit()
-#     return time_slot
+@pytest.fixture()
+async def time_slot_wednesday_thursday(
+    db_session: AsyncSession,
+    charming_host_user_calendar: calendar_models.Calendar,
+):
+    time_slot = calendar_models.TimeSlot(
+        start_time=time(10, 0),
+        end_time=time(11, 0),
+        weekdays=[calendar.WEDNESDAY, calendar.THURSDAY],
+        calendar_id=charming_host_user_calendar.id,
+    )
+    db_session.add(time_slot)
+    await db_session.commit()
+    return time_slot
 
 
 # @pytest.fixture()
@@ -282,44 +282,44 @@ async def time_slot_tuesday(
 
 
 
-# @pytest.fixture()
-# async def host_bookings(
-#     db_session: AsyncSession,
-#     guest_user: account_models.User,
-#     time_slot_tuesday: calendar_models.TimeSlot,
-# ):
-#     bookings = []
-#     for when in [date(2024, 12, 3), date(2024, 12, 10), date(2024, 12, 17), date(2025, 1, 7)]:
-#         booking = calendar_models.Booking(
-#             when=when,
-#             topic="test",
-#             description="test",
-#             time_slot_id=time_slot_tuesday.id,
-#             guest_id=guest_user.id,
-#         )
-#         db_session.add(booking)
-#         bookings.append(booking)
-#     await db_session.commit()
-#     return bookings
+@pytest.fixture()
+async def host_bookings(
+    db_session: AsyncSession,
+    guest_user: account_models.User,
+    time_slot_tuesday: calendar_models.TimeSlot,
+):
+    bookings = []
+    for when in [date(2024, 12, 3), date(2024, 12, 10), date(2024, 12, 17), date(2025, 1, 7)]:
+        booking = calendar_models.Booking(
+            when=when,
+            topic="test",
+            description="test",
+            time_slot_id=time_slot_tuesday.id,
+            guest_id=guest_user.id,
+        )
+        db_session.add(booking)
+        bookings.append(booking)
+    await db_session.commit()
+    return bookings
 
 
-# @pytest.fixture()
-# async def charming_host_bookings(
-#     db_session: AsyncSession,
-#     guest_user: account_models.User,
-#     time_slot_wednesday_thursday: calendar_models.TimeSlot,
-# ):
-#     bookings = []
-#     for when in [date(2024, 12, 4), date(2024, 12, 5), date(2024, 12, 11)]:
-#         booking = calendar_models.Booking(
-#             when=when,
-#             topic="test",
-#             description="test",
-#             time_slot_id=time_slot_wednesday_thursday.id,
-#             guest_id=guest_user.id,
-#         )
-#         db_session.add(booking)
-#         bookings.append(booking)
+@pytest.fixture()
+async def charming_host_bookings(
+    db_session: AsyncSession,
+    guest_user: account_models.User,
+    time_slot_wednesday_thursday: calendar_models.TimeSlot,
+):
+    bookings = []
+    for when in [date(2024, 12, 4), date(2024, 12, 5), date(2024, 12, 11)]:
+        booking = calendar_models.Booking(
+            when=when,
+            topic="test",
+            description="test",
+            time_slot_id=time_slot_wednesday_thursday.id,
+            guest_id=guest_user.id,
+        )
+        db_session.add(booking)
+        bookings.append(booking)
 
-#     await db_session.commit()
-#     return bookings
+    await db_session.commit()
+    return bookings

@@ -5,8 +5,7 @@ from fastapi import status
 from fastapi.testclient import TestClient
 
 from appserver.apps.account.models import User
-from appserver.apps.calendar.models import TimeSlot
-
+from appserver.apps.calendar.models import TimeSlot, Booking
 
 def get_next_weekday(weekday: int, weeks_ahead: int = 1) -> date:
     """지정한 요일의 미래 날짜를 반환 (0=월요일, 1=화요일, ...)"""
@@ -154,3 +153,13 @@ async def test_중복_예약을_생성하면_HTTP_422_응답을_한다(
     second_response = client_with_guest_auth.post(f"/bookings/{host_user.username}", json=payload)
     assert second_response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
+@pytest.mark.usefixtures("charming_host_bookings")
+async def test_호스트는_페이지_단위로_자신에게_예약된_부킹_목록을_받는다(
+    client_with_auth: TestClient,
+    host_bookings: list[Booking],
+):
+    response = client_with_auth.get("/bookings", params={"page": 1, "page_size": 10})
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert len(data) == len(host_bookings)
