@@ -94,22 +94,22 @@ def client_with_guest_auth(fastapi_app: FastAPI, guest_user: account_models.User
         yield client
 
 
-# @pytest.fixture()
-# def client_with_smart_guest_auth(fastapi_app: FastAPI, smart_guest_user: account_models.User):
-#     payload = LoginPayload.model_validate({
-#         "username": smart_guest_user.username,
-#         "password": "testtest",
-#     })
+@pytest.fixture()
+def client_with_smart_guest_auth(fastapi_app: FastAPI, smart_guest_user: account_models.User):
+    payload = LoginPayload.model_validate({
+        "username": smart_guest_user.username,
+        "password": "testtest",
+    })
 
-#     with TestClient(fastapi_app) as client:
-#         response = client.post("/account/login", json=payload.model_dump())
-#         assert response.status_code == status.HTTP_200_OK
+    with TestClient(fastapi_app) as client:
+        response = client.post("/account/login", json=payload.model_dump())
+        assert response.status_code == status.HTTP_200_OK
 
-#         auth_token = response.cookies.get("auth_token")
-#         assert auth_token is not None
+        auth_token = response.cookies.get("auth_token")
+        assert auth_token is not None
 
-#         client.cookies.set("auth_token", auth_token)
-#         yield client
+        client.cookies.set("auth_token", auth_token)
+        yield client
 
 
 @pytest.fixture()
@@ -157,19 +157,19 @@ async def guest_user(db_session: AsyncSession):
     return user
 
 
-# @pytest.fixture()
-# async def smart_guest_user(db_session: AsyncSession):
-#     user = account_models.User(
-#         username="smart_guest",
-#         hashed_password=hash_password("testtest"),
-#         email="smart_guest@example.com",
-#         display_name="스마트 게스트",
-#         is_host=False,
-#     )
-#     db_session.add(user)
-#     await db_session.commit()
-#     await db_session.flush()
-#     return user
+@pytest.fixture()
+async def smart_guest_user(db_session: AsyncSession):
+    user = account_models.User(
+        username="smart_guest",
+        hashed_password=hash_password("testtest"),
+        email="smart_guest@example.com",
+        display_name="스마트 게스트",
+        is_host=False,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.flush()
+    return user
 
 
 @pytest.fixture()
@@ -323,3 +323,22 @@ async def charming_host_bookings(
 
     await db_session.commit()
     return bookings
+
+
+@pytest.fixture()
+async def host_as_guest_booking(
+    db_session: AsyncSession,
+    host_user: account_models.User,
+    time_slot_wednesday_thursday: calendar_models.TimeSlot,
+):
+    """host_user가 charming_host의 캘린더에 게스트로 예약한 부킹"""
+    booking = calendar_models.Booking(
+        when=date(2025, 2, 19),  # 미래 수요일
+        topic="호스트도 게스트가 될 수 있다",
+        description="test",
+        time_slot_id=time_slot_wednesday_thursday.id,
+        guest_id=host_user.id,
+    )
+    db_session.add(booking)
+    await db_session.commit()
+    return booking

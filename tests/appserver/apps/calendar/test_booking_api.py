@@ -3,6 +3,7 @@ import pytest
 
 from fastapi import status
 from fastapi.testclient import TestClient
+from pytest_lazy_fixtures import lf
 
 from appserver.apps.account.models import User
 from appserver.apps.calendar.models import TimeSlot, Booking
@@ -209,3 +210,32 @@ async def test_게스트는_자신의_캘린더의_예약_내역을_페이지_�
     data = response.json()
     assert len(data) == len(id_set)
     assert all([item["id"] in id_set for item in data])
+
+@pytest.mark.parametrize(
+    "client, booking_fixture, expected_status_code",
+    [
+        # 게스트 케이스
+        (lf("client_with_guest_auth"), lf("host_bookings"), status.HTTP_200_OK),
+        (lf("client_with_smart_guest_auth"), lf("host_bookings"), status.HTTP_404_NOT_FOUND),
+
+        # 호스트 케이스
+        (lf("client_with_auth"), lf("host_bookings"), status.HTTP_200_OK),  # 자신의 캘린더 부킹
+        (lf("client_with_auth"), lf("host_as_guest_booking"), status.HTTP_200_OK),  # 자신이 게스트로 참여
+        (lf("client_with_auth"), lf("charming_host_bookings"), status.HTTP_404_NOT_FOUND),  # 관련 없는 부킹
+    ],
+)
+async def test_사용자는_특정_예약_내역_데이터를_받는다(
+    client: TestClient,
+    booking_fixture,
+    expected_status_code: int,
+):
+    # booking_fixture가 리스트인 경우 첫 번째 요소 사용, 아니면 그대로 사용
+    booking = booking_fixture[0] if isinstance(booking_fixture, list) else booking_fixture
+
+    response = client.get(f"/bookings/{booking.id}")
+
+    assert response.status_code == expected_status_code
+
+    if expected_status_code == status.HTTP_200_OK:
+        data = response.json()
+        assert data["id"] == booking.id
