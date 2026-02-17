@@ -268,3 +268,41 @@ async def test_호스트는_자신에게_신청한_부킹에_대해_일자_타�
     assert data["time_slot"]["start_time"] == time_slot.start_time.isoformat()
     assert data["time_slot"]["end_time"] == time_slot.end_time.isoformat()
     assert data["time_slot"]["weekdays"] == time_slot.weekdays
+
+@pytest.mark.parametrize(
+    "time_slot, expected_status_code",
+    [
+        (lf("time_slot_friday"), status.HTTP_404_NOT_FOUND),
+        (lf("time_slot_tuesday"), status.HTTP_200_OK),
+    ],
+)
+async def test_호스트는_다른_호스트의_타임슬롯을_변경할_할_수_없다(
+    client_with_auth: TestClient,
+    host_bookings: list[Booking],
+    time_slot: TimeSlot,
+    expected_status_code: int,
+):
+    response = client_with_auth.patch(
+        f"/bookings/{host_bookings[0].id}",
+        json={"time_slot_id": time_slot.id},
+    )
+    assert response.status_code == expected_status_code
+
+@pytest.mark.parametrize(
+    "time_slot, expected_status_code",
+    [
+        (lf("time_slot_friday"), status.HTTP_404_NOT_FOUND),
+        (lf("time_slot_tuesday"), status.HTTP_200_OK),
+    ],
+)
+async def test_게스트는_다른_호스트의_타임슬롯을_변경할_할_수_없다(
+    client_with_guest_auth: TestClient,
+    host_bookings: list[Booking],
+    time_slot: TimeSlot,
+    expected_status_code: int,
+):
+    response = client_with_guest_auth.patch(
+        f"/guest-bookings/{host_bookings[0].id}",
+        json={"time_slot_id": time_slot.id},
+    )
+    assert response.status_code == expected_status_code
