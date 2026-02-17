@@ -14,7 +14,10 @@ from appserver.apps.account import models as account_models
 from appserver.apps.calendar import models as calendar_models
 from appserver.apps.account.utils import hash_password
 from appserver.apps.account.schemas import LoginPayload
-#from appserver.libs.datetime.datetime import utcnow
+from appserver.libs.datetime import utcnow
+
+# 테스트에서 사용할 고정 날짜 (2025-01-15 수요일)
+FIXED_TEST_DATE = date(2025, 1, 15)
 
 
 @pytest.fixture(autouse=True)
@@ -44,11 +47,12 @@ def fastapi_app(db_session: AsyncSession):
     async def override_use_session():
         yield db_session
 
-    # def override_utcnow():
-    #     return utcnow().replace(year=2024, month=12, day=5)
+    def override_utcnow():
+        # 2025-01-15 수요일 15:00:00 UTC로 고정
+        return utcnow().replace(year=2025, month=1, day=15, hour=15, minute=0, second=0, microsecond=0)
 
     app.dependency_overrides[use_session] = override_use_session
-    # app.dependency_overrides[utcnow] = override_utcnow
+    app.dependency_overrides[utcnow] = override_utcnow
     return app
 
 

@@ -1,4 +1,3 @@
-from datetime import date
 from fastapi import APIRouter, status, Query, HTTPException
 from typing import Annotated
 from sqlmodel import select, and_, func, true, extract
@@ -8,6 +7,7 @@ from appserver.apps.calendar.models import Calendar, TimeSlot
 from appserver.db import DbSessionDep
 from appserver.apps.account.deps import CurrentUserOptionalDep, CurrentUserDep
 from .models import Booking
+from .deps import UtcNow
 from .exceptions import (
     CalendarNotFoundError, HostNotFoundError, CalendarAlreadyExistsError,
     GuestPermissionError, TimeSlotOverlapError, TimeSlotNotFoundError,
@@ -157,7 +157,8 @@ async def create_booking(
     host_username: str,
     user: CurrentUserDep,
     session: DbSessionDep,
-    payload: BookingCreateIn
+    payload: BookingCreateIn,
+    now: UtcNow,
 ) -> BookingOut:
     stmt = (
         select(User)
@@ -184,7 +185,7 @@ async def create_booking(
     if payload.when.weekday() not in time_slot.weekdays:
         raise TimeSlotNotFoundError()
 
-    if payload.when < date.today():
+    if payload.when < now.date():
         raise PastDateBookingError()
 
     # 중복 예약 체크

@@ -8,23 +8,22 @@ from pytest_lazy_fixtures import lf
 from appserver.apps.account.models import User
 from appserver.apps.calendar.models import TimeSlot, Booking
 from appserver.apps.calendar.schemas import BookingOut
+from tests.conftest import FIXED_TEST_DATE
 
-def get_next_weekday(weekday: int, weeks_ahead: int = 1) -> date:
+def get_next_weekday(weekday: int, weeks_ahead: int = 1, base_date: date = FIXED_TEST_DATE) -> date:
     """지정한 요일의 미래 날짜를 반환 (0=월요일, 1=화요일, ...)"""
-    today = date.today()
-    days_ahead = weekday - today.weekday()
+    days_ahead = weekday - base_date.weekday()
     if days_ahead <= 0:
         days_ahead += 7
-    return today + timedelta(days=days_ahead + (weeks_ahead - 1) * 7)
+    return base_date + timedelta(days=days_ahead + (weeks_ahead - 1) * 7)
 
 
-def get_past_weekday(weekday: int, weeks_ago: int = 1) -> date:
+def get_past_weekday(weekday: int, weeks_ago: int = 1, base_date: date = FIXED_TEST_DATE) -> date:
     """지정한 요일의 과거 날짜를 반환 (0=월요일, 1=화요일, ...)"""
-    today = date.today()
-    days_ago = today.weekday() - weekday
+    days_ago = base_date.weekday() - weekday
     if days_ago <= 0:
         days_ago += 7
-    return today - timedelta(days=days_ago + (weeks_ago - 1) * 7)
+    return base_date - timedelta(days=days_ago + (weeks_ago - 1) * 7)
 
 @pytest.mark.usefixtures("host_user_calendar")
 async def test_유효한_예약_신청_내용으로_예약_생성을_요청하면_예약_내용을_담아_HTTP_201_응답을_한다(
