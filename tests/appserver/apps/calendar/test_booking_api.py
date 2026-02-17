@@ -244,8 +244,8 @@ async def test_사용자는_특정_예약_내역_데이터를_받는다(
 @pytest.mark.parametrize(
     "payload",
     [
-        {"when": "2025-01-01", "time_slot": lf("time_slot_tuesday")},
-        {"when": "2025-01-02", "time_slot": lf("time_slot_monday")},
+        {"when": get_next_weekday(1).isoformat(), "time_slot": lf("time_slot_tuesday")},  # 다음 화요일
+        {"when": get_next_weekday(0).isoformat(), "time_slot": lf("time_slot_monday")},  # 다음 월요일
     ],
 )
 @pytest.mark.usefixtures("host_user_calendar")
@@ -310,9 +310,9 @@ async def test_게스트는_다른_호스트의_타임슬롯을_변경할_할_�
 @pytest.mark.parametrize(
     "payload",
     [
-        {"topic": "test", "description": "test", "when": "2025-01-01", "time_slot": lf("time_slot_tuesday")},
-        {"topic": "test", "description": "test", "when": "2025-01-02", "time_slot": lf("time_slot_monday")},
-        {"description": "test", "when": "2025-01-12"},
+        {"topic": "test", "description": "test", "when": get_next_weekday(1).isoformat(), "time_slot": lf("time_slot_tuesday")},  # 다음 화요일
+        {"topic": "test", "description": "test", "when": get_next_weekday(0).isoformat(), "time_slot": lf("time_slot_monday")},  # 다음 월요일
+        {"description": "test", "when": get_next_weekday(1).isoformat()},  # 다음 화요일 (time_slot 변경 없음)
     ],
 )
 async def test_게스트는_자신의_부킹에_대해_주제_설명_일자_타임슬롯을_변경할_수_있다(
@@ -367,3 +367,41 @@ async def test_게스트는_자신의_부킹에_대해_주제_설명_일자_타�
             assert before_booking["time_slot"]["weekdays"] == data["time_slot"]["weekdays"]
         else:
             assert before_booking[field_name] == data[field_name]
+
+@pytest.mark.parametrize(
+    "when, expected_status_code",
+    [
+        (get_next_weekday(2), status.HTTP_422_UNPROCESSABLE_ENTITY),  # 수요일 - 실패
+        (get_next_weekday(1), status.HTTP_200_OK),  # 화요일 - 성공
+    ],
+)
+async def test_호스트는_타임슬롯_요일이_아닌_날짜로_변경할_수_없다(
+    client_with_auth: TestClient,
+    host_bookings: list[Booking],
+    when: date,
+    expected_status_code: int,
+):
+    response = client_with_auth.patch(
+        f"/bookings/{host_bookings[0].id}",
+        json={"when": when.isoformat()},
+    )
+    assert response.status_code == expected_status_code
+
+@pytest.mark.parametrize(
+    "when, expected_status_code",
+    [
+        (get_next_weekday(2), status.HTTP_422_UNPROCESSABLE_ENTITY),  # 수요일 - 실패
+        (get_next_weekday(1), status.HTTP_200_OK),  # 화요일 - 성공
+    ],
+)
+async def test_게스트는_타임슬롯_요일이_아닌_날짜로_변경할_수_없다(
+    client_with_guest_auth: TestClient,
+    host_bookings: list[Booking],
+    when: date,
+    expected_status_code: int,
+):
+    response = client_with_guest_auth.patch(
+        f"/guest-bookings/{host_bookings[0].id}",
+        json={"when": when.isoformat()},
+    )
+    assert response.status_code == expected_status_code

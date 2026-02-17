@@ -65,3 +65,10 @@ class DuplicateBookingError(HTTPException):
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="이미 예약이 존재합니다."
         )
+
+class InvalidWeekdayError(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="타임슬롯 요일에 해당하지 않는 날짜입니다."
+        )

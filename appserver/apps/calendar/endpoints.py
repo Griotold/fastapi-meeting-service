@@ -12,6 +12,7 @@ from .exceptions import (
     CalendarNotFoundError, HostNotFoundError, CalendarAlreadyExistsError,
     GuestPermissionError, TimeSlotOverlapError, TimeSlotNotFoundError,
     SelfBookingError, PastDateBookingError, DuplicateBookingError,
+    InvalidWeekdayError,
 )
 from .schemas import (
     CalendarDetailOut, CalendarOut, CalendarCreateIn,
@@ -334,9 +335,9 @@ async def host_update_booking(
     booking = result.scalar_one_or_none()
     if booking is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="예약 내역이 없습니다.")
-    
-    if payload.when is not None:
-        booking.when = payload.when
+
+    # time_slot_id를 먼저 변경 (있는 경우)
+    new_time_slot = None
     if payload.time_slot_id is not None:
         stmt = (
             select(TimeSlot)
@@ -344,11 +345,18 @@ async def host_update_booking(
             .where(TimeSlot.calendar_id == user.calendar.id)
         )
         result = await session.execute(stmt)
-        time_slot = result.scalar_one_or_none()
-        if time_slot is None:
+        new_time_slot = result.scalar_one_or_none()
+        if new_time_slot is None:
             raise TimeSlotNotFoundError()
+        booking.time_slot_id = new_time_slot.id
 
-        booking.time_slot_id = time_slot.id
+    # when 변경 시 타임슬롯 요일 검증 (새 타임슬롯 기준 또는 기존 타임슬롯 기준)
+    if payload.when is not None:
+        target_time_slot = new_time_slot if new_time_slot is not None else booking.time_slot
+        if payload.when.weekday() not in target_time_slot.weekdays:
+            raise InvalidWeekdayError()
+        booking.when = payload.when
+
     await session.commit()
     await session.refresh(booking)
     return booking
@@ -375,6 +383,7 @@ async def guest_update_booking(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
                             detail="예약 내역이 없습니다.")
     
+    new_time_slot = None
     if payload.time_slot_id is not None:
         stmt = (
             select(TimeSlot)
@@ -382,16 +391,19 @@ async def guest_update_booking(
             .where(TimeSlot.calendar_id == booking.time_slot.calendar.id)
         )
         result = await session.execute(stmt)
-        time_slot = result.scalar_one_or_none()
-        if time_slot is None:
+        new_time_slot = result.scalar_one_or_none()
+        if new_time_slot is None:
             raise TimeSlotNotFoundError()
-        booking.time_slot_id = time_slot.id
-    
+        booking.time_slot_id = new_time_slot.id
+
     if payload.topic is not None:
         booking.topic = payload.topic
     if payload.description is not None:
         booking.description = payload.description
     if payload.when is not None:
+        target_time_slot = new_time_slot if new_time_slot is not None else booking.time_slot
+        if payload.when.weekday() not in target_time_slot.weekdays:
+            raise InvalidWeekdayError()
         booking.when = payload.when
     await session.commit()
     await session.refresh(booking)
