@@ -72,3 +72,10 @@ class InvalidWeekdayError(HTTPException):
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="타임슬롯 요일에 해당하지 않는 날짜입니다."
         )
+
+class PastBookingUpdateError(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="당일과 지난 부킹은 변경할 수 없습니다."
+        )

@@ -4,6 +4,7 @@ import pytest
 from fastapi import status
 from fastapi.testclient import TestClient
 from pytest_lazy_fixtures import lf
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from appserver.apps.account.models import User
 from appserver.apps.calendar.models import TimeSlot, Booking
@@ -167,7 +168,7 @@ async def test_호스트는_페이지_단위로_자신에게_예약된_부킹_�
 
 @pytest.mark.parametrize(
     "year, month",
-    [(2024, 12), (2025, 1)],
+    [(2025, 1), (2025, 2)],
 )
 @pytest.mark.usefixtures("charming_host_bookings")
 async def test_게스트는_호스트의_캘린더의_예약_내역을_월_단위로_받는다(
@@ -405,3 +406,65 @@ async def test_게스트는_타임슬롯_요일이_아닌_날짜로_변경할_�
         json={"when": when.isoformat()},
     )
     assert response.status_code == expected_status_code
+
+@pytest.mark.usefixtures("host_user_calendar")
+async def test_게스트는_당일과_지난_부킹을_변경할_수_없다(
+    db_session: AsyncSession,
+    client_with_guest_auth: TestClient,
+    guest_user: User,
+    time_slot_tuesday: TimeSlot,
+):
+    from tests.conftest import FIXED_TEST_DATE
+    from datetime import timedelta
+
+    # 과거, 당일, 미래 부킹 생성
+    past_booking = Booking(
+        when=FIXED_TEST_DATE - timedelta(days=2),  # 과거
+        topic="past",
+        description="test",
+        time_slot_id=time_slot_tuesday.id,
+        guest_id=guest_user.id,
+    )
+    today_booking = Booking(
+        when=FIXED_TEST_DATE,  # 당일
+        topic="today",
+        description="test",
+        time_slot_id=time_slot_tuesday.id,
+        guest_id=guest_user.id,
+    )
+    future_booking = Booking(
+        when=FIXED_TEST_DATE + timedelta(days=7),  # 미래
+        topic="future",
+        description="test",
+        time_slot_id=time_slot_tuesday.id,
+        guest_id=guest_user.id,
+    )
+
+    db_session.add_all([past_booking, today_booking, future_booking])
+    await db_session.commit()
+    await db_session.refresh(past_booking)
+    await db_session.refresh(today_booking)
+    await db_session.refresh(future_booking)
+
+    # 과거 부킹 변경 시도 - 실패
+    response = client_with_guest_auth.patch(
+        f"/guest-bookings/{past_booking.id}",
+        json={"topic": "updated"},
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    # 당일 부킹 변경 시도 - 실패
+    response = client_with_guest_auth.patch(
+        f"/guest-bookings/{today_booking.id}",
+        json={"topic": "updated"},
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    # 미래 부킹 변경 시도 - 성공
+    response = client_with_guest_auth.patch(
+        f"/guest-bookings/{future_booking.id}",
+        json={"topic": "updated"},
+    )
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["topic"] == "updated"

@@ -292,8 +292,9 @@ async def host_bookings(
     guest_user: account_models.User,
     time_slot_tuesday: calendar_models.TimeSlot,
 ):
+    # FIXED_TEST_DATE (2025-01-15)보다 미래 날짜로 설정
     bookings = []
-    for when in [date(2024, 12, 3), date(2024, 12, 10), date(2024, 12, 17), date(2025, 1, 7)]:
+    for when in [date(2025, 1, 21), date(2025, 1, 28), date(2025, 2, 4), date(2025, 2, 11)]:
         booking = calendar_models.Booking(
             when=when,
             topic="test",

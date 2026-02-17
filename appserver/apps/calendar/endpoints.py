@@ -12,7 +12,7 @@ from .exceptions import (
     CalendarNotFoundError, HostNotFoundError, CalendarAlreadyExistsError,
     GuestPermissionError, TimeSlotOverlapError, TimeSlotNotFoundError,
     SelfBookingError, PastDateBookingError, DuplicateBookingError,
-    InvalidWeekdayError,
+    InvalidWeekdayError, PastBookingUpdateError,
 )
 from .schemas import (
     CalendarDetailOut, CalendarOut, CalendarCreateIn,
@@ -371,6 +371,7 @@ async def guest_update_booking(
     session: DbSessionDep,
     booking_id: int,
     payload: GusetBookingUpdateIn,
+    now: UtcNow,
 ) -> BookingOut:
     stmt = (
         select(Booking)
@@ -380,9 +381,13 @@ async def guest_update_booking(
     result = await session.execute(stmt)
     booking = result.scalar_one_or_none()
     if booking is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="예약 내역이 없습니다.")
-    
+
+    # 당일과 지난 부킹은 변경할 수 없음
+    if booking.when <= now.date():
+        raise PastBookingUpdateError()
+
     new_time_slot = None
     if payload.time_slot_id is not None:
         stmt = (
