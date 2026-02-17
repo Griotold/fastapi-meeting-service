@@ -321,6 +321,7 @@ async def host_update_booking(
     session: DbSessionDep,
     booking_id: int,
     payload: HostBookingUpdateIn,
+    now: UtcNow,
 ) -> BookingOut:
     if not user.is_host or user.calendar is None:
         raise HostNotFoundError()
@@ -335,6 +336,10 @@ async def host_update_booking(
     booking = result.scalar_one_or_none()
     if booking is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="예약 내역이 없습니다.")
+
+    # 지난 부킹은 변경할 수 없음
+    if booking.when < now.date():
+        raise PastBookingUpdateError()
 
     # time_slot_id를 먼저 변경 (있는 경우)
     new_time_slot = None

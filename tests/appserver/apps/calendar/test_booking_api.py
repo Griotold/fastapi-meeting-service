@@ -468,3 +468,48 @@ async def test_게스트는_당일과_지난_부킹을_변경할_수_없다(
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["topic"] == "updated"
+
+@pytest.mark.usefixtures("host_user_calendar")
+async def test_호스트는_지난_부킹을_변경할_수_없다(
+    db_session: AsyncSession,
+    client_with_auth: TestClient,
+    guest_user: User,
+    time_slot_tuesday: TimeSlot,
+):
+    from tests.conftest import FIXED_TEST_DATE
+    from datetime import timedelta
+
+    # 과거, 미래 부킹 생성
+    past_booking = Booking(
+        when=FIXED_TEST_DATE - timedelta(days=2),  # 과거
+        topic="past",
+        description="test",
+        time_slot_id=time_slot_tuesday.id,
+        guest_id=guest_user.id,
+    )
+    future_booking = Booking(
+        when=FIXED_TEST_DATE + timedelta(days=7),  # 미래
+        topic="future",
+        description="test",
+        time_slot_id=time_slot_tuesday.id,
+        guest_id=guest_user.id,
+    )
+
+    db_session.add_all([past_booking, future_booking])
+    await db_session.commit()
+    await db_session.refresh(past_booking)
+    await db_session.refresh(future_booking)
+
+    # 과거 부킹 변경 시도 - 실패
+    response = client_with_auth.patch(
+        f"/bookings/{past_booking.id}",
+        json={"when": get_next_weekday(1).isoformat()},
+    )
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    # 미래 부킹 변경 시도 - 성공
+    response = client_with_auth.patch(
+        f"/bookings/{future_booking.id}",
+        json={"when": get_next_weekday(1, weeks_ahead=2).isoformat()},
+    )
+    assert response.status_code == status.HTTP_200_OK
