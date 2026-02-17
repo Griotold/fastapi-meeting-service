@@ -128,6 +128,76 @@ alembic upgrade head
 
 **자세한 내용:** [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) 참고
 
+## DTO 네이밍 관례 (schemas.py)
+
+프로젝트의 일관된 DTO 네이밍 패턴을 따릅니다.
+
+### 요청(Request) DTO
+
+#### 1. `Payload` 접미사
+인증 및 사용자 관련 요청에 사용
+```python
+SignupPayload       # 회원가입 요청
+LoginPayload        # 로그인 요청
+UpdateUserPayload   # 사용자 정보 수정 요청
+```
+
+#### 2. `CreateIn` 접미사
+리소스 생성 요청에 사용
+```python
+CalendarCreateIn    # 캘린더 생성
+TimeSlotCreateIn    # 타임슬롯 생성
+BookingCreateIn     # 예약 생성
+```
+
+#### 3. `UpdateIn` 접미사
+리소스 수정 요청에 사용
+```python
+CalendarUpdateIn       # 캘린더 수정
+HostBookingUpdateIn    # 예약 수정 (호스트용)
+```
+
+### 응답(Response) DTO
+
+#### 1. `Out` 접미사
+기본 응답 스키마
+```python
+UserOut         # 사용자 기본 정보
+CalendarOut     # 캘린더 기본 정보
+TimeSlotOut     # 타임슬롯 정보
+BookingOut      # 예약 정보
+```
+
+#### 2. `DetailOut` 접미사
+상세 정보 응답 (기본 정보 + 추가 필드)
+```python
+UserDetailOut       # 사용자 상세 정보 (email, 생성일, 수정일 포함)
+CalendarDetailOut   # 캘린더 상세 정보 (host_id, 생성일, 수정일 포함)
+```
+
+#### 3. `Simple` 접두사
+간소화된 응답 (필수 필드만 포함)
+```python
+SimpleBookingOut    # 예약 간소 정보 (날짜, 타임슬롯만)
+```
+
+### 네이밍 규칙 요약
+
+| 용도 | 패턴 | 예시 |
+|------|------|------|
+| 인증/사용자 요청 | `XxxPayload` | `SignupPayload` |
+| 생성 요청 | `XxxCreateIn` | `BookingCreateIn` |
+| 수정 요청 | `XxxUpdateIn` | `CalendarUpdateIn` |
+| 기본 응답 | `XxxOut` | `UserOut` |
+| 상세 응답 | `XxxDetailOut` | `UserDetailOut` |
+| 간소 응답 | `SimpleXxxOut` | `SimpleBookingOut` |
+
+### 장점
+- **명확한 데이터 흐름**: `In`/`Out`으로 요청/응답 구분
+- **일관성**: 도메인별로 동일한 패턴 적용
+- **확장성**: 새로운 DTO 추가 시 패턴 재사용 가능
+- **가독성**: 클래스명만으로 용도 파악 가능
+
 ## 참고사항
 - 가상환경은 `.venv` 디렉토리에 위치
 - Poetry로 패키지 관리

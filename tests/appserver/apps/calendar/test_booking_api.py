@@ -239,3 +239,32 @@ async def test_사용자는_특정_예약_내역_데이터를_받는다(
     if expected_status_code == status.HTTP_200_OK:
         data = response.json()
         assert data["id"] == booking.id
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"when": "2025-01-01", "time_slot": lf("time_slot_tuesday")},
+        {"when": "2025-01-02", "time_slot": lf("time_slot_monday")},
+    ],
+)
+@pytest.mark.usefixtures("host_user_calendar")
+async def test_호스트는_자신에게_신청한_부킹에_대해_일자_타임슬롯을_변경할_수_있다(
+    payload: dict,
+    client_with_auth: TestClient,
+    host_bookings: list[Booking],
+):
+    booking = host_bookings[0]
+    time_slot: TimeSlot = payload["time_slot"]
+    payload["time_slot_id"] = time_slot.id
+    del payload["time_slot"]
+
+    response = client_with_auth.patch(f"/bookings/{booking.id}", json=payload)
+
+    assert response.status_code == status.HTTP_200_OK
+
+    data = response.json()
+    assert data["when"] == payload["when"]
+    assert data["time_slot"]["start_time"] == time_slot.start_time.isoformat()
+    assert data["time_slot"]["end_time"] == time_slot.end_time.isoformat()
+    assert data["time_slot"]["weekdays"] == time_slot.weekdays
