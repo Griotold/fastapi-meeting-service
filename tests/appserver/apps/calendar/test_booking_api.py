@@ -545,3 +545,96 @@ async def test_호스트는_자신에게_신청한_부킹의_참석_상태를_�
     assert data["attendance_status"] == attendance_status.value
 
 
+@pytest.mark.usefixtures("host_user_calendar")
+async def test_게스트는_자신이_신청한_미래_부킹을_취소할_수_있다(
+    db_session: AsyncSession,
+    client_with_guest_auth: TestClient,
+    guest_user: User,
+    time_slot_tuesday: TimeSlot,
+):
+    # 미래 부킹 생성
+    future_booking = Booking(
+        when=FIXED_TEST_DATE + timedelta(days=7),  # 미래
+        topic="future",
+        description="test",
+        time_slot_id=time_slot_tuesday.id,
+        guest_id=guest_user.id,
+    )
+    db_session.add(future_booking)
+    await db_session.commit()
+    await db_session.refresh(future_booking)
+
+    # 미래 부킹 취소 - 성공
+    response = client_with_guest_auth.delete(f"/guest-bookings/{future_booking.id}")
+    assert response.status_code == status.HTTP_200_OK
+
+    # 취소 후 상태 확인
+    response = client_with_guest_auth.get(f"/bookings/{future_booking.id}")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["attendance_status"] == AttendanceStatus.CANCELLED.value
+
+
+@pytest.mark.usefixtures("host_user_calendar")
+async def test_게스트는_당일_부킹을_취소하면_당일취소_상태가_된다(
+    db_session: AsyncSession,
+    client_with_guest_auth: TestClient,
+    guest_user: User,
+    time_slot_tuesday: TimeSlot,
+):
+    # 당일 부킹 생성
+    today_booking = Booking(
+        when=FIXED_TEST_DATE,  # 당일
+        topic="today",
+        description="test",
+        time_slot_id=time_slot_tuesday.id,
+        guest_id=guest_user.id,
+    )
+    db_session.add(today_booking)
+    await db_session.commit()
+    await db_session.refresh(today_booking)
+
+    # 당일 부킹 취소 - 성공
+    response = client_with_guest_auth.delete(f"/guest-bookings/{today_booking.id}")
+    assert response.status_code == status.HTTP_200_OK
+
+    # 취소 후 상태 확인 (당일 취소)
+    response = client_with_guest_auth.get(f"/bookings/{today_booking.id}")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["attendance_status"] == AttendanceStatus.SAME_DAY_CANCEL.value
+
+
+@pytest.mark.usefixtures("host_user_calendar")
+async def test_게스트는_과거_부킹을_취소할_수_없다(
+    db_session: AsyncSession,
+    client_with_guest_auth: TestClient,
+    guest_user: User,
+    time_slot_tuesday: TimeSlot,
+):
+    # 과거 부킹 생성
+    past_booking = Booking(
+        when=FIXED_TEST_DATE - timedelta(days=2),  # 과거
+        topic="past",
+        description="test",
+        time_slot_id=time_slot_tuesday.id,
+        guest_id=guest_user.id,
+    )
+    db_session.add(past_booking)
+    await db_session.commit()
+    await db_session.refresh(past_booking)
+
+    # 과거 부킹 취소 시도 - 실패
+    response = client_with_guest_auth.delete(f"/guest-bookings/{past_booking.id}")
+    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+
+async def test_게스트는_다른_사람의_부킹을_취소할_수_없다(
+    client_with_smart_guest_auth: TestClient,
+    host_bookings: list[Booking],
+):
+    # 다른 게스트의 부킹 취소 시도 - 실패
+    response = client_with_smart_guest_auth.delete(f"/guest-bookings/{host_bookings[0].id}")
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+
+

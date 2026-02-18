@@ -8,6 +8,7 @@ from appserver.db import DbSessionDep
 from appserver.apps.account.deps import CurrentUserOptionalDep, CurrentUserDep
 from .models import Booking
 from .deps import UtcNow
+from .enums import AttendanceStatus
 from .exceptions import (
     CalendarNotFoundError, HostNotFoundError, CalendarAlreadyExistsError,
     GuestPermissionError, TimeSlotOverlapError, TimeSlotNotFoundError,
@@ -451,4 +452,44 @@ async def update_booking_status(
     booking.attendance_status = payload.attendance_status
     await session.commit()
     await session.refresh(booking)
-    return booking  
+    return booking
+
+
+@router.delete(
+    "/guest-bookings/{booking_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=BookingOut,
+)
+async def cancel_guest_booking(
+    user: CurrentUserDep,
+    session: DbSessionDep,
+    booking_id: int,
+    now: UtcNow,
+) -> BookingOut:
+    """게스트가 자신이 신청한 부킹을 취소"""
+    stmt = (
+        select(Booking)
+        .where(Booking.id == booking_id)
+        .where(Booking.guest_id == user.id)
+    )
+    result = await session.execute(stmt)
+    booking = result.scalar_one_or_none()
+    if booking is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="예약 내역이 없습니다."
+        )
+
+    # 과거 부킹은 취소할 수 없음
+    if booking.when < now.date():
+        raise PastBookingUpdateError()
+
+    # 당일 취소인지 미래 취소인지 판단
+    if booking.when == now.date():
+        booking.attendance_status = AttendanceStatus.SAME_DAY_CANCEL
+    else:
+        booking.attendance_status = AttendanceStatus.CANCELLED
+
+    await session.commit()
+    await session.refresh(booking)
+    return booking
