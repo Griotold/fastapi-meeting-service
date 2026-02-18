@@ -66,44 +66,34 @@ poetry run pytest --cov=appserver --cov-report=html
 
 ## 데이터베이스 마이그레이션 (Alembic)
 
-### 마이그레이션 생성
-모델을 수정한 후 마이그레이션 파일 생성:
+### 기본 명령어
+
 ```bash
+# 마이그레이션 생성 (모델 수정 후)
 alembic revision --autogenerate -m "마이그레이션 설명"
-```
 
-### 마이그레이션 적용
-```bash
+# 마이그레이션 적용
 alembic upgrade head
-```
 
-### 마이그레이션 되돌리기
-```bash
 # 한 단계 되돌리기
 alembic downgrade -1
 
-# 특정 버전으로 되돌리기
-alembic downgrade <revision_id>
-```
-
-### 마이그레이션 상태 확인
-```bash
 # 현재 버전 확인
 alembic current
-
-# 마이그레이션 히스토리 확인
-alembic history
 ```
 
-### 초기 설정 (최초 1회만)
-```bash
-# Alembic 초기화 (이미 완료됨)
-alembic init alembic
+### 📚 상세 가이드
 
-# 첫 마이그레이션 생성 및 적용 (이미 완료됨)
-alembic revision --autogenerate -m "Initial migration"
-alembic upgrade head
-```
+마이그레이션 스크립트 검토, 백업 전략, 프로덕션 배포 등 상세한 내용은 아래 문서를 참고하세요:
+
+**[데이터베이스 마이그레이션 & 백업 전략 가이드](docs/DATABASE_MIGRATION_BACKUP.md)**
+
+주요 내용:
+- Enum 사용법 (StrEnum, 데이터베이스 저장 방식)
+- 마이그레이션 스크립트 검토 및 수정
+- 백업 전략 (SQLite, PostgreSQL, AWS RDS)
+- Point-in-Time Recovery (PITR)
+- 실무 베스트 프랙티스
 
 ## 개발 워크플로우 (TDD)
 
@@ -197,6 +187,12 @@ SimpleBookingOut    # 예약 간소 정보 (날짜, 타임슬롯만)
 - **일관성**: 도메인별로 동일한 패턴 적용
 - **확장성**: 새로운 DTO 추가 시 패턴 재사용 가능
 - **가독성**: 클래스명만으로 용도 파악 가능
+
+## 📚 추가 문서
+
+- **[데이터베이스 마이그레이션 & 백업 전략](docs/DATABASE_MIGRATION_BACKUP.md)** - Alembic, Enum, 백업 전략, AWS RDS
+- **[배포 가이드](docs/DEPLOYMENT.md)** - 모바일 앱 배포 시 주의사항
+- **[캘린더 사용자 시나리오](docs/CALENDAR_USER_SCENARIOS.md)** - 사용자 스토리 및 시나리오
 
 ## 참고사항
 - 가상환경은 `.venv` 디렉토리에 위치
