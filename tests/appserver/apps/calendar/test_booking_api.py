@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from appserver.apps.account.models import User
 from appserver.apps.calendar.models import TimeSlot, Booking
 from appserver.apps.calendar.schemas import BookingOut
+from appserver.apps.calendar.enums import AttendanceStatus
 from tests.conftest import FIXED_TEST_DATE
 
 def get_next_weekday(weekday: int, weeks_ahead: int = 1, base_date: date = FIXED_TEST_DATE) -> date:
@@ -513,3 +514,34 @@ async def test_호스트는_지난_부킹을_변경할_수_없다(
         json={"when": get_next_weekday(1, weeks_ahead=2).isoformat()},
     )
     assert response.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.parametrize(
+    "attendance_status",
+    [
+        (AttendanceStatus.SCHEDULED),
+        (AttendanceStatus.ATTENDED),
+        (AttendanceStatus.NO_SHOW),
+        (AttendanceStatus.CANCELLED),
+        (AttendanceStatus.SAME_DAY_CANCEL),
+        (AttendanceStatus.LATE),
+    ],
+)
+async def test_호스트는_자신에게_신청한_부킹의_참석_상태를_변경할_수_있다(
+    client_with_auth: TestClient,
+    host_bookings: list[Booking],
+    attendance_status: AttendanceStatus,
+):
+    payload = {
+        "attendance_status": attendance_status,
+    }
+    booking = host_bookings[-1]
+    response = client_with_auth.patch(f"/bookings/{booking.id}/status", json=payload)
+
+    response = client_with_auth.get(f"/bookings/{booking.id}")
+    assert response.status_code == status.HTTP_200_OK
+
+    data = response.json()
+    assert data["attendance_status"] == attendance_status.value
+
+

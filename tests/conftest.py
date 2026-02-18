@@ -347,3 +347,4 @@ async def host_as_guest_booking(
     db_session.add(booking)
     await db_session.commit()
     return booking
+
